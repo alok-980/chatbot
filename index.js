@@ -14,26 +14,36 @@ const model = new ChatGroq({
     apiKey: process.env.GROQ_API_KEY
 });
 
+let message = [];
+
 while (true) {
     const userInput = await readline.question("Enter your input: ");
 
-    const stream = await model.stream([
-        {
-            role: 'user',
-            content: userInput
-        }
-    ]);
+    message.push({
+        role: 'user',
+        content: userInput
+    })
+
+    const stream = await model.stream(message);
+
+    let aiMessage = "";
 
     for await (const chunk of stream) {
-        //console.log(chunk.content); // ise har token alag line me aa rahe hote hai is liye hm 
+        // The response arrives in small chunks. Add each chunk to aiMessage
+        // so we can save the complete assistant response in the conversation.
+        aiMessage += chunk.content;
 
-        // iska use karte hain
+        // Write each chunk immediately so the response appears as it streams.
         process.stdout.write(chunk.content);
-
-        // yek problem yahan e hai ki stdout nextline nhi le raha hota to is wajh se single line response me next line na lene ki wajh se
-        // readline usi line ko use karne lagt ahai jis wajh se response override ho jata hai or usi line me input lene lag jata hai
     }
 
-    // to is wajh se ham ye likhte hain
-    process.stdout.write("/n")
+    message.push({
+        role: 'assistant',
+        content: aiMessage
+    })
+
+    // End the response with a real newline. Without it, the next readline
+    // prompt appears on the same line and can look like it is overwriting
+    // the response.
+    process.stdout.write("\n");
 }
